@@ -2,17 +2,26 @@
 #include <cassert>
 #include <algorithm>
 #include <cstddef>
+#include <type_traits>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 
 #include "os_memory.hpp"
 
+#include <iostream>
+using namespace std;
+
 using std::max_align_t;
 
 namespace eecs281 {
 
 namespace {
+
+    /**
+     * An alias for the unsigned type returned by the alignof operator
+     */
+    using UnsignedAlignInteger = decltype(alignof(int));
 
     /**
      * Constant to determine the minimum memory that can be requested from the
@@ -23,8 +32,23 @@ namespace {
      */
     const auto MINIMUM_BATCH = getpagesize();
 
+    /**
+     * An implementation of a roundup function using bitwise operations, the
+     * second parameter has to be a power of two for this to work, this
+     * function asserts that
+     */
+    int round_up_to(int value, UnsignedAlignInteger multiple);
+
 } // namespace <anonymous>
 
+
+/**
+ * A very efficient implementation of a rounding up to the smallest larger
+ * multiple of the maximum alignment
+ */
+int round_up_to_max_alignment(int value) {
+    return round_up_to(value, alignof(max_align_t));
+}
 
 std::pair<void*, int> extend_heap(int amount_of_memory) {
     // assert that the amount of memory requested is aligned on the maximum
@@ -37,7 +61,7 @@ std::pair<void*, int> extend_heap(int amount_of_memory) {
     // page boundary since we want to be good memory citizens (consult the
     // local manual pages for mmap(2) for more details)
     auto actual_amount = std::max(amount_of_memory, MINIMUM_BATCH);
-    actual_amount += actual_amount % MINIMUM_BATCH;
+    actual_amount = round_up_to(actual_amount, MINIMUM_BATCH);
 
     // then request the memory from the operating system, error check and
     // throw an exception with a string error message as fetched from the
@@ -66,4 +90,38 @@ std::pair<void*, int> extend_heap(int amount_of_memory) {
     return std::make_pair(memory, actual_amount);
 }
 
+namespace {
+
+    int round_up_to(int value, UnsignedAlignInteger multiple) {
+        // assert that the integers are positive, because otherwise this will
+        // not work
+        assert(value > 0);
+        assert(multiple > 0);
+
+        auto unsigned_value = static_cast<UnsignedAlignInteger>(value);
+
+        // assert that the max_alignment is a power of two
+        assert(!(multiple & (multiple - 1)));
+        return (unsigned_value + multiple - 1) & ~(multiple - 1);
+    }
+
+} // namespace <anonymous>
+
 } // namespace eecs281
+
+
+int main() {
+    using namespace std;
+    using namespace eecs281;
+
+    auto pr = extend_heap(round_up_to_max_alignment(10));
+    cout << reinterpret_cast<uintptr_t>(pr.first) << " " << pr.second << endl;
+
+    pr = extend_heap(round_up_to_max_alignment(20));
+    cout << reinterpret_cast<uintptr_t>(pr.first) << " " << pr.second << endl;
+
+    pr = extend_heap(round_up_to_max_alignment(getpagesize() + 10));
+    cout << reinterpret_cast<uintptr_t>(pr.first) << " " << pr.second << endl;
+
+    return 0;
+}

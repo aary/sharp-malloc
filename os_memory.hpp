@@ -37,5 +37,14 @@ namespace eecs281 {
  */
 std::pair<void*, int> extend_heap(int amount_of_memory);
 
-} // namespace eecs281
+/**
+ * Rounds up the first value to the next multiple of the second value and
+ * returns the result
+ *
+ * @param value the value to be rounded up
+ * @param multiple the thing to round up to
+ * @return returns the result of rounding up the first value to the second
+ */
+int round_up_to_max_alignment(int value);
 
+} // namespace eecs281
