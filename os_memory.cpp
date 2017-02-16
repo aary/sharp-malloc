@@ -9,11 +9,6 @@
 
 #include "os_memory.hpp"
 
-#include <iostream>
-using namespace std;
-
-using std::max_align_t;
-
 namespace eecs281 {
 
 namespace {
@@ -43,14 +38,14 @@ namespace {
 
 
 int round_up_to_max_alignment(int value) {
-    return round_up_to(value, alignof(max_align_t));
+    return round_up_to(value, alignof(std::max_align_t));
 }
 
 std::pair<void*, int> extend_heap(int amount_of_memory) {
     // assert that the amount of memory requested is aligned on the maximum
     // alignment restriction of the system
     assert(amount_of_memory);
-    assert(!(amount_of_memory % alignof(max_align_t)));
+    assert(!(amount_of_memory % alignof(std::max_align_t)));
 
     // The actual amount of memory that is going to be requested from the
     // operating system from the mmap call, this has to be a multiple of the
@@ -82,7 +77,7 @@ std::pair<void*, int> extend_heap(int amount_of_memory) {
     // point the compiler needs to be trusted for bitwise conversions like
     // this so ¯\_(ツ)_/¯
     assert(memory);
-    assert(!(reinterpret_cast<uintptr_t>(memory) % alignof(max_align_t)));
+    assert(!(reinterpret_cast<uintptr_t>(memory) % alignof(std::max_align_t)));
     return std::make_pair(memory, actual_amount);
 }
 
