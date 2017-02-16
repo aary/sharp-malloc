@@ -12,6 +12,8 @@
 #include "eecs281malloc.hpp"
 #include "os_memory.hpp"
 
+#include <iostream>
+
 using std::uintptr_t;
 using std::max_align_t;
 
@@ -126,26 +128,30 @@ namespace {
      * Insert the header into the linked list in a sorted manner, keeping the
      * nodes ordered by their address, lower address first then the higher
      * address
+     *
+     * @param to_insert the header pointer to insert into the free list
      */
     void insert_sorted(Header_t* to_insert);
+
+    /**
+     * Prints the free list, this is a debugging method.  Use this to print
+     * the entire contents of the list
+     */
+    void print_free_list();
 
 } // namespace <anonymous>
 
 
-void* malloc(std::size_t amount_in) {
+void* malloc(int amount) {
 
-    // assert that the amount of memory is not greater than the maximum
-    // integer on the system, this is done for safety because apart from this
-    // function no other function in this module uses unsigned integers
-    assert(amount_in <= std::numeric_limits<int>::max());
-    auto amount = static_cast<int>(amount_in);
+    // round up the amount to the max alignment on the system
     amount = round_up_to_max_alignment(amount);
 
     // iterate through the free list and see if a node with the right size can
     // be found
     auto iter = std::find_if(free_list.begin(), free_list.end(),
             [&](auto header_ptr) {
-        return !remove_memory(header_ptr, amount);
+        return remove_memory(header_ptr, amount);
     });
 
     // if the header was found then remove the required memory, insert in a
@@ -155,13 +161,13 @@ void* malloc(std::size_t amount_in) {
         free_list.erase(iter);
         auto new_header = remove_memory(header, amount);
 
-        // if the header had just enough memory
-        if (new_header == header) {
-            return static_cast<void*>(header + 1);
+        // If the new header was not equal to the old one, then insert the new
+        // one back into the free list
+        if (new_header != header) {
+            insert_sorted(new_header);
         }
 
-        // otherwise insert it back
-        insert_sorted(new_header);
+        // return the memory
         return static_cast<void*>(header + 1);
     }
 
@@ -268,7 +274,51 @@ namespace {
         free_list.insert(iter, to_insert);
     }
 
+    void print_free_list() {
+        using std::cout;
+        using std::endl;
+        for (const auto& node : free_list) {
+            cout << reinterpret_cast<uintptr_t>(node) << " " << node->datum
+                 << endl;
+        }
+    }
+
 } // namespace <anonymous>
 
 } // namespace eecs281
 
+
+int main() {
+    using namespace std;
+    using namespace eecs281;
+
+    auto pointer = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    print_free_list();
+
+    pointer = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    print_free_list();
+
+    pointer = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    print_free_list();
+
+    pointer = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    print_free_list();
+
+    pointer = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    print_free_list();
+
+    pointer = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    print_free_list();
+
+    pointer = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    print_free_list();
+
+    return 0;
+}

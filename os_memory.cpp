@@ -100,6 +100,7 @@ namespace {
 } // namespace eecs281
 
 
+/*
 int main() {
     using namespace std;
     using namespace eecs281;
@@ -115,3 +116,4 @@ int main() {
 
     return 0;
 }
+*/

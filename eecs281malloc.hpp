@@ -70,7 +70,7 @@ namespace eecs281 {
  *        an unsigned integer because of compatibility with regular malloc(3)
  *        implemetations
  */
-void* malloc(std::size_t amount_of_memory);
+void* malloc(int amount);
 
 /**
  * The free function associated with the malloc function above, this works
