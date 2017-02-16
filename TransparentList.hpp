@@ -101,14 +101,14 @@ public:
      * Method to insert a given node right before the element pointed to by the
      * iterator
      */
-    void insert(NodeIterator iterator, TransparentNode<Type>* node_to_insert)
-        noexcept;
+    NodeIterator insert(NodeIterator iterator,
+                        TransparentNode<Type>* node_to_insert) noexcept;
 
     /**
      * Given an iterator to an element in the linked list, remove it from the
      * list
      */
-    void erase(NodeIterator iterator) noexcept;
+    NodeIterator erase(NodeIterator iterator) noexcept;
 
     /**
      * Return an iterator to the beginning of the linked list

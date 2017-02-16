@@ -14,6 +14,7 @@
 
 #include <iostream>
 
+using namespace std;
 using std::uintptr_t;
 using std::max_align_t;
 
@@ -131,7 +132,7 @@ namespace {
      *
      * @param to_insert the header pointer to insert into the free list
      */
-    void insert_sorted(Header_t* to_insert);
+    FreeList_t::NodeIterator insert_sorted(Header_t* to_insert);
 
     /**
      * Prints the free list, this is a debugging method.  Use this to print
@@ -151,7 +152,7 @@ void* malloc(int amount) {
     // be found
     auto iter = std::find_if(free_list.begin(), free_list.end(),
             [&](auto header_ptr) {
-        return remove_memory(header_ptr, amount);
+        return header_ptr->datum > amount;
     });
 
     // if the header was found then remove the required memory, insert in a
@@ -162,7 +163,8 @@ void* malloc(int amount) {
         auto new_header = remove_memory(header, amount);
 
         // If the new header was not equal to the old one, then insert the new
-        // one back into the free list
+        // one back into the free list since there is enough memory for
+        // another node
         if (new_header != header) {
             insert_sorted(new_header);
         }
@@ -178,11 +180,48 @@ void* malloc(int amount) {
     assert(header);
     assert(header->datum >= amount);
     insert_sorted(header);
+
+    // tail recursive malloc call
     return malloc(amount);
 }
 
-void free(void*) {
-    coalesce(nullptr, nullptr);
+void free(void* address) {
+    // get a pointer to the header right before the memory that has to be
+    // freed
+    auto header_ptr = static_cast<Header_t*>(address) - 1;
+
+    // insert back into the free list
+    auto iter = insert_sorted(header_ptr);
+    assert(iter != free_list.end());
+
+    // check the iterators right before and after it
+    auto before = iter;
+    auto after = iter;
+    --before;
+    ++after;
+
+    // check before
+    if (before != free_list.end()) {
+        auto coalesced_header_ptr = coalesce(*before, *iter);
+        if (coalesced_header_ptr) {
+            free_list.erase(iter);
+            free_list.erase(before);
+
+            // reset the iter value to be the iterator that points to the
+            // inserted element
+            iter = insert_sorted(coalesced_header_ptr);
+        }
+    }
+
+    // check after
+    if (after != free_list.end()) {
+        auto coalesced_header_ptr = coalesce(*after, *iter);
+        if (coalesced_header_ptr) {
+            free_list.erase(iter);
+            free_list.erase(after);
+            insert_sorted(coalesced_header_ptr);
+        }
+    }
 }
 
 
@@ -229,6 +268,10 @@ namespace {
         if (new_header) {
             assert(boundary_aligned(new_header));
             assert(boundary_aligned(new_header->datum));
+
+            // change the amount of memory right after the old header to be
+            // the amount that was requested
+            header_ptr->datum = amount;
             return new_header;
         }
 
@@ -265,13 +308,13 @@ namespace {
         return nullptr;
     }
 
-    void insert_sorted(Header_t* to_insert) {
+    FreeList_t::NodeIterator insert_sorted(Header_t* to_insert) {
         assert(to_insert);
         auto iter = std::find_if_not(free_list.begin(), free_list.end(),
                 [&](auto header) {
             return header < to_insert;
         });
-        free_list.insert(iter, to_insert);
+        return free_list.insert(iter, to_insert);
     }
 
     void print_free_list() {
@@ -281,6 +324,7 @@ namespace {
             cout << reinterpret_cast<uintptr_t>(node) << " " << node->datum
                  << endl;
         }
+        cout << endl;
     }
 
 } // namespace <anonymous>
@@ -292,32 +336,44 @@ int main() {
     using namespace std;
     using namespace eecs281;
 
-    auto pointer = eecs281::malloc(10);
-    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    auto pointer_one = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer_one) << endl;
     print_free_list();
 
-    pointer = eecs281::malloc(10);
-    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    auto pointer_two = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer_two) << endl;
     print_free_list();
 
-    pointer = eecs281::malloc(10);
-    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    auto pointer_three = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer_three) << endl;
     print_free_list();
 
-    pointer = eecs281::malloc(10);
-    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    auto pointer_four = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer_four) << endl;
     print_free_list();
 
-    pointer = eecs281::malloc(10);
-    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    auto pointer_five = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer_five) << endl;
     print_free_list();
 
-    pointer = eecs281::malloc(10);
-    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    auto pointer_six = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer_six) << endl;
     print_free_list();
 
-    pointer = eecs281::malloc(10);
-    cout << reinterpret_cast<uintptr_t>(pointer) << endl;
+    auto pointer_seven = eecs281::malloc(10);
+    cout << reinterpret_cast<uintptr_t>(pointer_seven) << endl;
+    print_free_list();
+
+    eecs281::free(pointer_seven);
+    print_free_list();
+
+    eecs281::free(pointer_five);
+    print_free_list();
+
+    eecs281::free(pointer_six);
+    print_free_list();
+
+    eecs281::free(pointer_four);
     print_free_list();
 
     return 0;
