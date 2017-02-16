@@ -51,8 +51,11 @@ namespace {
      * Constructs a header starting at address address and extending till the
      * location as specified by amount and returns the aligned pointer to the
      * header
+     *
+     * Fails with an abort if either address or amount are not divisible by
+     * the maximum alignment on the system
      */
-    Header_t* construct_header(void* address, int amount);
+    Header_t* make_header(void* address, int amount);
 
     /**
      * Removes the requested memory from the header and returns a pointer to
@@ -78,7 +81,11 @@ namespace {
      * with the maximum primitive alignment value (std::max_align_t)
      *
      * This function can be used both with pointers as well as integral
-     * values.
+     * values.  The two overloads take care of seeing whether the pointer or
+     * the integer are divisible by the maximum alignment on the system, there
+     * is no good way in C++ to cast both a pointer or a signed integer to an
+     * unsigned value, reinterpret_cast is only used for bit-wise conversions
+     * and static_cast does not work on pointers
      */
     template <typename Type>
     bool is_boundary_aligned(Type* pointer) {
@@ -111,9 +118,10 @@ void free(void*) {
 
 namespace {
 
-    Header_t* construct_header(void* address, int amount) {
+    Header_t* make_header(void* address, int amount) {
         assert(is_boundary_aligned(address));
         assert(is_boundary_aligned(amount));
+        assert(is_boundary_aligned(sizeof(Header_t)));
 
         // if the header cannot serve any memory request then return a nullptr
         // to indicate that the header is not suitable for usage
@@ -121,8 +129,11 @@ namespace {
             return nullptr;
         }
 
-        // set the size variable of the header to be the required amount and
-        // then align it to the required amount, since the
+        // set the size variable in the header to be the previous size minus
+        // the amount that is needed for the header, this will still result in
+        // the address range being aligned since the node type's alignment has
+        // been set to the maximum alignment on the system (i.e.
+        // alignof(std::max_align_t)
         auto header_ptr = static_cast<Header_t*>(address);
         header_ptr->datum = amount - sizeof(Header_t);
 
@@ -130,9 +141,10 @@ namespace {
     }
 
     Header_t* remove_memory(Header_t* header_ptr, int amount) {
+        assert(header_ptr);
         assert(is_boundary_aligned(header_ptr));
         assert(is_boundary_aligned(amount));
-        assert(header_ptr);
+        assert(is_boundary_aligned(header_ptr->datum);
 
         // if the header does not contain enough memory for the amount to be
         // reduced then return nullptr
@@ -141,7 +153,7 @@ namespace {
         }
 
         // attempt to create another header from the current header
-        auto new_header = construct_header(reinterpret_cast<void*>(
+        auto new_header = make_header(reinterpret_cast<void*>(
                     reinterpret_cast<uintptr_t>(header_ptr + 1) + amount),
                 header_ptr->datum - amount);
         if (new_header) {
@@ -156,23 +168,25 @@ namespace {
     }
 
     Header_t* coalesce(Header_t* header_one, Header_t* header_two) {
-        // assert that the pointers are properly aligned
+        // assert a bunch of things
+        assert(header_one);
+        assert(header_two);
         assert(is_boundary_aligned(header_one));
         assert(is_boundary_aligned(header_two));
+        assert(header_one != header_two);
+        assert(is_boundary_aligned(header_one->datum));
+        assert(is_boundary_aligned(header_two->datum));
 
-        // assign the lesser of the two to be the min_header
+        // assign the lesser of the two to be the min_header, since we need to
+        // coalesce the blocks, and we don't care about the order in which the
+        // blocks are given
         auto min_header = std::min(header_one, header_two);
         auto max_header = std::max(header_one, header_two);
-
-        if (min_header == max_header) {
-            return min_header;
-        }
 
         // if the max one is immediately after the lesser one, then coalesce
         // them and return the pointer to the coalesced block
         if (reinterpret_cast<uintptr_t>(min_header + 1) + min_header->datum
                 == reinterpret_cast<uintptr_t>(max_header)) {
-            assert(is_boundary_aligned(max_header->datum));
             min_header->datum += sizeof(Header_t);
             min_header->datum += max_header->datum;
             return min_header;
@@ -180,6 +194,7 @@ namespace {
 
         return nullptr;
     }
+
 } // namespace <anonymous>
 
 } // namespace eecs281

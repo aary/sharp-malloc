@@ -35,6 +35,13 @@
  * provide things like canaries at the end of the allocated region to shield
  * against that.  Nor does it fiddle with the protection bits of the memory
  * allocated from the operating system beyond the minimally required amount.
+ *
+ * This library uses assertions copiously to flag misalignments before they
+ * can actually cause any problems, so if there is an assertion failure in the
+ * library, it probably means that a pointer is either null when it should not
+ * be or that it is not aligned to the maximum alignment set by the system
+ * hardware
+
  */
 
 #pragma once
