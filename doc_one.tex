@@ -96,10 +96,16 @@ This method will be passed an iterator and it should remove the element
 pointed to by the iterator, and update head and tail pointers accordingly.
 After deletion, this should return an iterator following the removed element.
 
+\bigskip
 \subsection{Misc}
+
 This linked list implementation does not manage any memory and hence is called
 transparent.  As such you are not supposed to call either new or delete for
-any code that you write for this project.
+any code that you write for this lab.
+
+A lot of the linked list functionality is already implemented for you.
+Including the iterator class that you will have to use, so be sure to take a
+look in the implementation whenever you have questions.
 
 This library follows the convention of splitting the interface and
 implementation files into two seperate files, one ending with an \texttt{.ipp}
@@ -107,30 +113,14 @@ extension and one ending with a \texttt{.hpp} extension.  You are only
 supposed to write code in the \texttt{.ipp} file in the code segments marked
 with a \texttt{TODO} symbol.
 
-
 \newpage
 \section{Submitting your work}
-Please submit the header files for question
-1 and 3 in a \texttt{.tar.gz} file.  You can construct a tarball with the
-following command
+Please submit the implementation (\texttt{TransparentList.ipp}) file in a
+tarball to the autograder, you can use the following command to generate the
+tarball.
 \begin{lstlisting}
-    tar -czvf lab08.tar.gz HashTable.h better_upper_bound.h
+    tar -czvf lab08.tar.gz TransparentList.ipp
 \end{lstlisting}
-
-Please remember to compile your code with all the appropriate compiler flags!
-One neat trick is to alias \texttt{g++} as \texttt{g+++} in your
-\texttt{\~{}/.bash\_profile} to call the compiler with all the appropriate
-command line flags instead of having to type them out each time.  Add the
-following line to your \texttt{\~{}/.bash\_profile} file to achieve this
-\begin{lstlisting}
-    alias g+++="g++ -std=c++14 -Wall -Werror -Wvla -Wextra -pedantic -O3"
-\end{lstlisting}
-
-Note that for bigger projects nothing beats a good makefile so don't let this
-spoil your good make habits!
-
-You will have to submit the answers to the multiple choice questions on Canvas
-in test center.
 
 \end{document}
 
