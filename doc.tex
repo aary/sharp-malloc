@@ -1,0 +1,137 @@
+% ********************************* HEADERS ***********************************
+\documentclass{article}
+\usepackage[top=.75in, bottom=.75in, left=.50in,right=.50in]{geometry}
+\usepackage{fancyhdr}
+\usepackage{titling}
+\pagestyle{fancy}
+\lhead{EECS 281 - Data Structures and Algorithms}
+\rhead{\thepage}
+\usepackage{color}
+\usepackage{graphicx}
+\newcommand{\heart}{\ensuremath\heartsuit}
+\usepackage{listings}
+\lstset{
+  % language=C++,
+  showstringspaces=false,
+  basicstyle={\small\ttfamily},
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{dkgreen},
+}
+\usepackage[colorlinks,urlcolor={blue}]{hyperref}
+%\setlength{\parskip}{1em}
+\usepackage{parskip}
+\usepackage{indentfirst}
+\setlength{\droptitle}{-4em}
+% \usepackage{concmath}
+% \usepackage[T1]{fontenc}
+\renewcommand{\theenumi}{\Alph{enumi}}
+% ********************************* HEADERS ***********************************
+\pagenumbering{gobble}
+\begin{document}
+\title{\textbf{EECS 281 Lab 8 - Fragmented Data Structures}}
+\author{Due Tuesday, March 15th, 2017 at 11:59pm}
+\date{}
+\maketitle
+\fancypagestyle{firststyle}
+{
+   \fancyfoot[L]{Written by Aaryaman Sagar for EECS 281 @ The University of
+                 Michigan - Ann Arbor}
+   \pagestyle{empty}
+}
+\thispagestyle{firststyle}
+
+This is the first lab in a series of 2 labs which will end with you writing a
+custom untyped memory allocator very much like the C \texttt{malloc()} function!
+
+\section{Transparent double ended linked list}
+Your first task in this lab will be to write a doubly ended linked list that
+does not manage memory.  Such a list is often times useful when the underlying
+memory structure for the system is not known.  For example this can be useful
+in embedded systems where there is no operating system or when writing
+programs right on top of the kernel memory interface (take EECS 482 for more
+details).
+
+The doubly ended linked list does not contain any bookkeeping other than the
+head and tail pointers, no size variable is included.  Each node is passed to
+the linked list with a pointer and the linked list changes its connections and
+adds it to the linked list.
+
+\subsection{Deliverables}
+
+\begin{lstlisting}
+    void push_back(TransparentNode*)
+\end{lstlisting}
+This function will accept a node type by pointer and put that pointer at the
+back of the linked list.  All invariants must be satisfied after calling this
+function.  For example, the tail pointer must equal to the pointer passed in
+to this function when the function call finishes, also the head pointer must
+be updated if there were no elements in the linked list prior to this function
+call.
+
+\begin{lstlisting}
+   void push_front(TransparentNode*)
+\end{lstlisting}
+This function very much like \texttt{push\_back()} accepts a node by pointer
+and puts that node into the linked list at the very beginning.  The head
+pointer must always be updated and all invariants in the linked list must be
+satisfied after this call finishes.
+
+\begin{lstlisting}
+    NodeIterator insert(NodeIterator, TransparentNode*)
+\end{lstlisting}
+The insert function accepts an iterator as an argument along with a node
+pointer that it must insert right before the element pointed to by the
+iterator.  The function must take into account the fact that the iterator
+passed as an argument might be past the end of the linked list, in which case
+the result will be the same as calling \texttt{push\_back()} on an empty
+linked list.  The function must return an iterator to the inserted element
+back to the user.
+
+\begin{lstlisting}
+    NodeIterator erase(NodeIterator)
+\end{lstlisting}
+This method will be passed an iterator and it should remove the element
+pointed to by the iterator, and update head and tail pointers accordingly.
+After deletion, this should return an iterator following the removed element.
+
+\subsection{Misc}
+This linked list implementation does not manage any memory and hence is called
+transparent.  As such you are not supposed to call either new or delete for
+any code that you write for this project.
+
+This library follows the convention of splitting the interface and
+implementation files into two seperate files, one ending with an \texttt{.ipp}
+extension and one ending with a \texttt{.hpp} extension.  You are only
+supposed to write code in the \texttt{.ipp} file in the code segments marked
+with a \texttt{TODO} symbol.
+
+
+\newpage
+\section{Submitting your work}
+Please submit the header files for question
+1 and 3 in a \texttt{.tar.gz} file.  You can construct a tarball with the
+following command
+\begin{lstlisting}
+    tar -czvf lab08.tar.gz HashTable.h better_upper_bound.h
+\end{lstlisting}
+
+Please remember to compile your code with all the appropriate compiler flags!
+One neat trick is to alias \texttt{g++} as \texttt{g+++} in your
+\texttt{\~{}/.bash\_profile} to call the compiler with all the appropriate
+command line flags instead of having to type them out each time.  Add the
+following line to your \texttt{\~{}/.bash\_profile} file to achieve this
+\begin{lstlisting}
+    alias g+++="g++ -std=c++14 -Wall -Werror -Wvla -Wextra -pedantic -O3"
+\end{lstlisting}
+
+Note that for bigger projects nothing beats a good makefile so don't let this
+spoil your good make habits!
+
+You will have to submit the answers to the multiple choice questions on Canvas
+in test center.
+
+\end{document}
+
+
