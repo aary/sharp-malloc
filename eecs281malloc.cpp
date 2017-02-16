@@ -54,6 +54,14 @@ namespace {
      *
      * Fails with an abort if either address or amount are not divisible by
      * the maximum alignment on the system
+     *
+     * @param address The address at which to construct the header
+     * @param amount The amount of memory that will be taken up by the block
+     *        following the header
+     *
+     * @return returns a pointer to the formed header in the memory address
+     *         specified.  If the header can not fit in the memory location
+     *         given then the function returns a nullptr
      */
     Header_t* make_header(void* address, int amount);
 
@@ -66,12 +74,29 @@ namespace {
      * not more than the amount requested.  Returns a pointer that is not
      * equal to the original pointer if there is enough space in the header to
      * accomodate another header if possible
+     *
+     * @param header_ptr a pointer to the header from which you want to remove
+     *        memory, another header that is amount + sizeof(Header_t) bytes
+     *        from the passed header will be returned if there is memory for
+     *        it
+     *
+     * @return If the header cannot be used for the amount of bytes given in
+     *         the second parameter then a nullptr will be returned.  If there
+     *         is just enough memory in the header then the same pointer will
+     *         be returned
      */
     Header_t* remove_memory(Header_t* header_ptr, int amount);
 
     /**
      * Coalesces two blocks and then returns the coalesced block to the user,
      * if they cannot be coalesced then this function returns a nullptr
+     *
+     * @param header_one the first header to be coalesced
+     * @param header_two the second header to be coalesced
+     *
+     * @return returns a pointer to the header formed by coalescing the two
+     *         headers in the parameter pack, if they cannot be coalesced then
+     *         it returns a nullptr
      */
     Header_t* coalesce(Header_t* header_one, Header_t* header_two);
 
@@ -88,13 +113,12 @@ namespace {
      * and static_cast does not work on pointers
      */
     template <typename Type>
-    bool is_boundary_aligned(Type* pointer) {
+    bool boundary_aligned(Type* pointer) {
         return !(reinterpret_cast<uintptr_t>(pointer) % alignof(max_align_t));
     }
 
-    template <typename IntegralType,
-              typename EnableIfIntegral<Type>* = nullptr>
-    bool is_boundary_aligned(IntegralType integer) {
+    template <typename IntegralType, EnableIfIntegral<IntegralType>* = nullptr>
+    bool boundary_aligned(IntegralType integer) {
         return !(integer % alignof(max_align_t));
     }
 
@@ -119,9 +143,9 @@ void free(void*) {
 namespace {
 
     Header_t* make_header(void* address, int amount) {
-        assert(is_boundary_aligned(address));
-        assert(is_boundary_aligned(amount));
-        assert(is_boundary_aligned(sizeof(Header_t)));
+        assert(boundary_aligned(address));
+        assert(boundary_aligned(amount));
+        assert(boundary_aligned(sizeof(Header_t)));
 
         // if the header cannot serve any memory request then return a nullptr
         // to indicate that the header is not suitable for usage
@@ -134,17 +158,16 @@ namespace {
         // the address range being aligned since the node type's alignment has
         // been set to the maximum alignment on the system (i.e.
         // alignof(std::max_align_t)
-        auto header_ptr = static_cast<Header_t*>(address);
-        header_ptr->datum = amount - sizeof(Header_t);
-
+        auto new_size = static_cast<int>(amount - sizeof(Header_t));
+        auto header_ptr = new(address) Header_t{new_size};
         return header_ptr;;
     }
 
     Header_t* remove_memory(Header_t* header_ptr, int amount) {
         assert(header_ptr);
-        assert(is_boundary_aligned(header_ptr));
-        assert(is_boundary_aligned(amount));
-        assert(is_boundary_aligned(header_ptr->datum);
+        assert(boundary_aligned(header_ptr));
+        assert(boundary_aligned(amount));
+        assert(boundary_aligned(header_ptr->datum));
 
         // if the header does not contain enough memory for the amount to be
         // reduced then return nullptr
@@ -152,13 +175,14 @@ namespace {
             return nullptr;
         }
 
-        // attempt to create another header from the current header
+        // attempt to create another header from the current header, if there
+        // is enough memory for another header then one will be created
         auto new_header = make_header(reinterpret_cast<void*>(
                     reinterpret_cast<uintptr_t>(header_ptr + 1) + amount),
                 header_ptr->datum - amount);
         if (new_header) {
-            assert(is_boundary_aligned(new_header));
-            assert(is_boundary_aligned(new_header->datum));
+            assert(boundary_aligned(new_header));
+            assert(boundary_aligned(new_header->datum));
             return new_header;
         }
 
@@ -171,11 +195,11 @@ namespace {
         // assert a bunch of things
         assert(header_one);
         assert(header_two);
-        assert(is_boundary_aligned(header_one));
-        assert(is_boundary_aligned(header_two));
+        assert(boundary_aligned(header_one));
+        assert(boundary_aligned(header_two));
         assert(header_one != header_two);
-        assert(is_boundary_aligned(header_one->datum));
-        assert(is_boundary_aligned(header_two->datum));
+        assert(boundary_aligned(header_one->datum));
+        assert(boundary_aligned(header_two->datum));
 
         // assign the lesser of the two to be the min_header, since we need to
         // coalesce the blocks, and we don't care about the order in which the

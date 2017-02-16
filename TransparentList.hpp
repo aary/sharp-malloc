@@ -45,6 +45,9 @@ template <typename Type>
 class alignas(alignof(std::max_align_t)) TransparentNode {
 public:
 
+    template <typename Thing>
+    TransparentNode(const Thing& thing) : datum{thing} {}
+
     /**
      * The datum, this is made public so that the user can interact with it as
      * they wish
