@@ -34,6 +34,10 @@ namespace eecs281 {
  *
  * @param amount_of_memory the amount of memory that is to be requested from
  *        the operating system in bytes.
+ *
+ * @return returns a pair, the first element of the pair is the memory that
+ *         has been fetched from the operating system and the second is the
+ *         length of the memory block
  */
 std::pair<void*, int> extend_heap(int amount_of_memory);
 
@@ -43,6 +47,7 @@ std::pair<void*, int> extend_heap(int amount_of_memory);
  *
  * @param value the value to be rounded up
  * @param multiple the thing to round up to
+ *
  * @return returns the result of rounding up the first value to the second
  */
 int round_up_to_max_alignment(int value);

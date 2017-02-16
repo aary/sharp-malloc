@@ -42,10 +42,6 @@ namespace {
 } // namespace <anonymous>
 
 
-/**
- * A very efficient implementation of a rounding up to the smallest larger
- * multiple of the maximum alignment
- */
 int round_up_to_max_alignment(int value) {
     return round_up_to(value, alignof(max_align_t));
 }
@@ -96,7 +92,6 @@ namespace {
         // assert that the integers are positive, because otherwise this will
         // not work
         assert(value > 0);
-        assert(multiple > 0);
 
         auto unsigned_value = static_cast<UnsignedAlignInteger>(value);
 
