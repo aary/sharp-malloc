@@ -23,7 +23,7 @@ namespace eecs281 {
 namespace {
 
     /**
-     * Typedefs for the list and header
+     * Typedefs for the list and header for readability
      */
     using FreeList_t = TransparentList<int>;
     using Header_t = TransparentNode<int>;
@@ -35,15 +35,6 @@ namespace {
     static_assert(alignof(Header_t) == alignof(max_align_t),
             "Cannot work with a header class that is not aligned to the right "
             "system boundary");
-
-    /**
-     * A concept that enables an overload only if the type is an integral
-     * type, this has to be used in a SFINAE context with it set either as a
-     * template parameter value pointer, a template parameter value, a
-     * function call parameter value or a return type
-     */
-    template <typename Type>
-    using EnableIfIntegral = std::enable_if_t<std::is_integral<Type>::value>;
 
     /**
      * A singleton that contains the state required by the memory allocator
@@ -104,35 +95,28 @@ namespace {
     Header_t* coalesce(Header_t* header_one, Header_t* header_two);
 
     /**
-     * Asserts the alignment of the passed in pointer value.  The maximum
-     * alignment is determined by the alignment of the library type provided
-     * with the maximum primitive alignment value (std::max_align_t)
-     *
-     * This function can be used both with pointers as well as integral
-     * values.  The two overloads take care of seeing whether the pointer or
-     * the integer are divisible by the maximum alignment on the system, there
-     * is no good way in C++ to cast both a pointer or a signed integer to an
-     * unsigned value, reinterpret_cast is only used for bit-wise conversions
-     * and static_cast does not work on pointers
-     */
-    template <typename Type>
-    bool boundary_aligned(Type* pointer) {
-        return !(reinterpret_cast<uintptr_t>(pointer) % alignof(max_align_t));
-    }
-
-    template <typename IntegralType, EnableIfIntegral<IntegralType>* = nullptr>
-    bool boundary_aligned(IntegralType integer) {
-        return !(integer % alignof(max_align_t));
-    }
-
-    /**
      * Insert the header into the linked list in a sorted manner, keeping the
      * nodes ordered by their address, lower address first then the higher
      * address
      *
      * @param to_insert the header pointer to insert into the free list
+     *
+     * @return returns an iterator that points to the inserted element
      */
     FreeList_t::NodeIterator insert_sorted(Header_t* to_insert);
+
+    /**
+     * Removes memory from the free list as pointed to by the iterator and
+     * then returns the void* pointer required to the user.  This will fail
+     * with an abort() if there isnt enough memory in the node
+     *
+     * @param iter the iterator to the node from which to remove memory
+     * @param amount the amount of memory to remove
+     *
+     * @return returns the memory extracted from the element pointed to by the
+     *         iterator
+     */
+    void* remove_memory_re_insert(FreeList_t::NodeIterator iter, int amount);
 
     /**
      * Prints the free list, this is a debugging method.  Use this to print
@@ -158,19 +142,7 @@ void* malloc(int amount) {
     // if the header was found then remove the required memory, insert in a
     // sorted manner and then return that memory to the user
     if (iter != free_list.end()) {
-        auto header = *iter;
-        free_list.erase(iter);
-        auto new_header = remove_memory(header, amount);
-
-        // If the new header was not equal to the old one, then insert the new
-        // one back into the free list since there is enough memory for
-        // another node
-        if (new_header != header) {
-            insert_sorted(new_header);
-        }
-
-        // return the memory
-        return static_cast<void*>(header + 1);
+        return remove_memory_re_insert(iter, amount);
     }
 
     // else allocate more memory, remove memory from that header and then
@@ -179,10 +151,8 @@ void* malloc(int amount) {
     auto header = make_header(memory_amount_pr.first, memory_amount_pr.second);
     assert(header);
     assert(header->datum >= amount);
-    insert_sorted(header);
-
-    // tail recursive malloc call
-    return malloc(amount);
+    iter = insert_sorted(header);
+    return remove_memory_re_insert(iter, amount);
 }
 
 void free(void* address) {
@@ -200,7 +170,7 @@ void free(void* address) {
     --before;
     ++after;
 
-    // check before
+    // coalesce with the block before if possible
     if (before != free_list.end()) {
         auto coalesced_header_ptr = coalesce(*before, *iter);
         if (coalesced_header_ptr) {
@@ -213,7 +183,8 @@ void free(void* address) {
         }
     }
 
-    // check after
+    // coalesce with the block after is possible, this might include the
+    // coalesced block from the previous if block
     if (after != free_list.end()) {
         auto coalesced_header_ptr = coalesce(*after, *iter);
         if (coalesced_header_ptr) {
@@ -226,6 +197,28 @@ void free(void* address) {
 
 
 namespace {
+
+    /**
+     * Asserts the alignment of the passed in pointer value.  The maximum
+     * alignment is determined by the alignment of the library type provided
+     * with the maximum primitive alignment value (std::max_align_t)
+     *
+     * This function can be used both with pointers as well as integral
+     * values.  The two overloads take care of seeing whether the pointer or
+     * the integer are divisible by the maximum alignment on the system, there
+     * is no good way in C++ to cast both a pointer or a signed integer to an
+     * unsigned value, reinterpret_cast is only used for bit-wise conversions
+     * and static_cast does not work on pointers
+     */
+    template <typename Type>
+    bool boundary_aligned(Type* pointer) {
+        return !(reinterpret_cast<uintptr_t>(pointer) % alignof(max_align_t));
+    }
+
+    template <typename IntegralType>
+    bool boundary_aligned(IntegralType integer) {
+        return !(integer % alignof(max_align_t));
+    }
 
     Header_t* make_header(void* address, int amount) {
         assert(boundary_aligned(address));
@@ -243,6 +236,10 @@ namespace {
         // the address range being aligned since the node type's alignment has
         // been set to the maximum alignment on the system (i.e.
         // alignof(std::max_align_t)
+        //
+        // the new here is not actually allocating memory but rather is a
+        // placement new, which just constructs the thing on the right in the
+        // memory location specified by address
         auto new_size = static_cast<int>(amount - sizeof(Header_t));
         auto header_ptr = new(address) Header_t{new_size};
         return header_ptr;;
@@ -317,6 +314,30 @@ namespace {
         return free_list.insert(iter, to_insert);
     }
 
+    void* remove_memory_re_insert(FreeList_t::NodeIterator iter, int amount) {
+        assert(iter != free_list.end());
+        assert(boundary_aligned(amount));
+        assert(boundary_aligned(*iter));
+        assert((*iter)->datum >= amount);
+
+        // make a copy of the header, remove it from the list and call the
+        // remove_memory function to see what is left after the required
+        // memory is removed
+        auto header = *iter;
+        free_list.erase(iter);
+        auto new_header = remove_memory(header, amount);
+
+        // If the new header was not equal to the old one, then insert the new
+        // one back into the free list since there is enough memory for
+        // another node
+        if (new_header != header) {
+            insert_sorted(new_header);
+        }
+
+        // return the memory right after the header
+        return static_cast<void*>(header + 1);
+    }
+
     void print_free_list() {
         using std::cout;
         using std::endl;
@@ -364,17 +385,32 @@ int main() {
     cout << reinterpret_cast<uintptr_t>(pointer_seven) << endl;
     print_free_list();
 
+    cout << "Freeing pointer 7" << endl;
     eecs281::free(pointer_seven);
     print_free_list();
 
+    cout << "Freeing pointer 5" << endl;
     eecs281::free(pointer_five);
     print_free_list();
 
+    cout << "Freeing pointer 6" << endl;
     eecs281::free(pointer_six);
     print_free_list();
 
+    cout << "Freeing pointer 4" << endl;
     eecs281::free(pointer_four);
     print_free_list();
 
+    cout << "Freeing pointer 2" << endl;
+    eecs281::free(pointer_two);
+    print_free_list();
+
+    cout << "Freeing pointer 3" << endl;
+    eecs281::free(pointer_three);
+    print_free_list();
+
+    cout << "Freeing pointer 1" << endl;
+    eecs281::free(pointer_one);
+    print_free_list();
     return 0;
 }
