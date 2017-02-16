@@ -122,21 +122,61 @@ namespace {
         return !(integer % alignof(max_align_t));
     }
 
+    /**
+     * Insert the header into the linked list in a sorted manner, keeping the
+     * nodes ordered by their address, lower address first then the higher
+     * address
+     */
+    void insert_sorted(Header_t* to_insert);
+
 } // namespace <anonymous>
 
 
 void* malloc(std::size_t amount_in) {
+
     // assert that the amount of memory is not greater than the maximum
     // integer on the system, this is done for safety because apart from this
     // function no other function in this module uses unsigned integers
     assert(amount_in <= std::numeric_limits<int>::max());
-    // auto amount = static_cast<int>(amount_in);
-    remove_memory(nullptr, 0);
-    coalesce(nullptr, nullptr);
-    return nullptr;
+    auto amount = static_cast<int>(amount_in);
+    amount = round_up_to_max_alignment(amount);
+
+    // iterate through the free list and see if a node with the right size can
+    // be found
+    auto iter = std::find_if(free_list.begin(), free_list.end(),
+            [&](auto header_ptr) {
+        return !remove_memory(header_ptr, amount);
+    });
+
+    // if the header was found then remove the required memory, insert in a
+    // sorted manner and then return that memory to the user
+    if (iter != free_list.end()) {
+        auto header = *iter;
+        free_list.erase(iter);
+        auto new_header = remove_memory(header, amount);
+
+        // if the header had just enough memory
+        if (new_header == header) {
+            return static_cast<void*>(header + 1);
+        }
+
+        // otherwise insert it back
+        insert_sorted(new_header);
+        return static_cast<void*>(header + 1);
+    }
+
+    // else allocate more memory, remove memory from that header and then
+    // sorted insert back into the list, and then call malloc again
+    auto memory_amount_pr = extend_heap(amount + sizeof(Header_t));
+    auto header = make_header(memory_amount_pr.first, memory_amount_pr.second);
+    assert(header);
+    assert(header->datum >= amount);
+    insert_sorted(header);
+    return malloc(amount);
 }
 
 void free(void*) {
+    coalesce(nullptr, nullptr);
 }
 
 
@@ -217,6 +257,15 @@ namespace {
         }
 
         return nullptr;
+    }
+
+    void insert_sorted(Header_t* to_insert) {
+        assert(to_insert);
+        auto iter = std::find_if_not(free_list.begin(), free_list.end(),
+                [&](auto header) {
+            return header < to_insert;
+        });
+        free_list.insert(iter, to_insert);
     }
 
 } // namespace <anonymous>
