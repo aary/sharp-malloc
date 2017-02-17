@@ -30,7 +30,7 @@
 % ********************************* HEADERS ***********************************
 \pagenumbering{gobble}
 \begin{document}
-\title{\textbf{EECS 281 Lab 8 - Fragmented Data Structures}}
+\title{\textbf{EECS 281 Lab 8 - Fragmented Data Structures (part 1)}}
 \author{Due Tuesday, March 15th, 2017 at 11:59pm}
 \date{}
 \maketitle
@@ -50,13 +50,13 @@ Your first task in this lab will be to write a doubly ended linked list that
 does not manage memory.  Such a list is often times useful when the underlying
 memory structure for the system is not known.  For example this can be useful
 in embedded systems where there is no operating system or when writing
-programs right on top of the kernel memory interface (take EECS 482 for more
-details).
+programs right on top of the kernel memory interface (take EECS 370 and EECS
+482 for more).
 
-The doubly ended linked list does not contain any bookkeeping other than the
+The double ended linked list does not contain any bookkeeping other than the
 head and tail pointers, no size variable is included.  Each node is passed to
-the linked list with a pointer and the linked list changes its connections and
-adds it to the linked list.
+the linked list with a pointer and the linked list changes its previous and
+header pointers and adds it to the linked list.
 
 \subsection{Deliverables}
 
@@ -66,28 +66,26 @@ adds it to the linked list.
 This function will accept a node type by pointer and put that pointer at the
 back of the linked list.  All invariants must be satisfied after calling this
 function.  For example, the tail pointer must equal to the pointer passed in
-to this function when the function call finishes, also the head pointer must
-be updated if there were no elements in the linked list prior to this function
+to this function when the function call finishes or the head pointer must be
+updated if there were no elements in the linked list prior to this function
 call.
 
 \begin{lstlisting}
    void push_front(TransparentNode*)
 \end{lstlisting}
 This function very much like \texttt{push\_back()} accepts a node by pointer
-and puts that node into the linked list at the very beginning.  The head
-pointer must always be updated and all invariants in the linked list must be
-satisfied after this call finishes.
+and puts that node into the linked list at the very beginning.
 
 \begin{lstlisting}
     NodeIterator insert(NodeIterator, TransparentNode*)
 \end{lstlisting}
 The insert function accepts an iterator as an argument along with a node
-pointer that it must insert right before the element pointed to by the
-iterator.  The function must take into account the fact that the iterator
+pointer that it should insert right before the element pointed to by the
+iterator.  The function has to take into account the fact that the iterator
 passed as an argument might be past the end of the linked list, in which case
 the result will be the same as calling \texttt{push\_back()} on an empty
-linked list.  The function must return an iterator to the inserted element
-back to the user.
+linked list.  The function returns an iterator to the inserted element back to
+the user.
 
 \begin{lstlisting}
     NodeIterator erase(NodeIterator)
@@ -110,17 +108,8 @@ look in the implementation whenever you have questions.
 This library follows the convention of splitting the interface and
 implementation files into two seperate files, one ending with an \texttt{.ipp}
 extension and one ending with a \texttt{.hpp} extension.  You are only
-supposed to write code in the \texttt{.ipp} file in the code segments marked
-with a \texttt{TODO} symbol.
-
-\newpage
-\section{Submitting your work}
-Please submit the implementation (\texttt{TransparentList.ipp}) file in a
-tarball to the autograder, you can use the following command to generate the
-tarball.
-\begin{lstlisting}
-    tar -czvf lab08.tar.gz TransparentList.ipp
-\end{lstlisting}
+supposed to write code in the \texttt{.ipp} file in the segments marked with a
+\texttt{TODO} symbol.
 
 \end{document}
 
