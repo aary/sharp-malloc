@@ -51,8 +51,8 @@ write an untyped memory allocator very much like the C \texttt{malloc()}
 function to allocate memory on the heap.
 
 Memory allocators including the C++ \texttt{new} operator get memory on the
-heap through function calls to the operating system.  You will be keeping
-track of the memory available to you from all previous requests to the
+heap through function calls to the operating system.  Your allocator will be
+keeping track of the memory available from all previous requests to the
 operating system in a fragmented linked list.
 
 A fragmented data structure is one that comprises of elements stored
@@ -62,28 +62,28 @@ structures.
 
 \begin{figure}[!htb]
 \centering
-\includegraphics[height=3cm]{fragmented_memory}
+\includegraphics[height=2cm]{fragmented_memory}
 \caption{Fragemented memory}
 \end{figure}
 
 \begin{figure}[!htb]
 \centering
-\includegraphics[height=3cm]{non_fragmented_memory}
+\includegraphics[height=2cm]{non_fragmented_memory}
 \caption{Non fragemented memory}
 \end{figure}
 
 A memory request is served by returning a block of memory to the user for
 usage.  This memory will be returned as a \texttt{void*} pointer which points
-to a block of memory that is large enough to store the amount of data the user
+to allocated memory that is large enough to store the amount of data the user
 has asked for.  The allocator keeps track of the memory segments and how large
 each segment is by storing a header with the size information just before the
-memory that is returned to the user.  This looks like so (with the grey
-portion showing memory that can be used by the user, and the black showing
-memory reserved for the header)
+actual usable memory.  This looks like so (with the grey portion showing
+memory that can be used by the user, and the black showing memory reserved for
+the header)
 
 \begin{figure}[!htb]
 \centering
-\includegraphics[height=3cm]{memory_storage}
+\includegraphics[height=2cm]{memory_storage}
 \caption{Memory storage}
 \end{figure}
 
@@ -94,23 +94,23 @@ knows how much memory each allocated block points to, so that if the
 \texttt{free()} function is called on that memory, it can be put back into the
 linked list of headers.
 
-The linked list of headers will look like shown below, with each header
-pointing to the next header in the logically increasing order or addresses
-(for example here the first header on the left is at a lower location in
-memory as compared to the second and the thirs and the second one is at a
-lower location in memory as compared to the third)
+The linked list of headers will resemble the list shown below, with each
+header pointing to the next header in the logically increasing order or
+addresses (for example here the first header on the left is at a lower
+location in memory as compared to the second and the third and the second one
+is at a lower location in memory as compared to the third)
 
 \begin{figure}[!htb]
 \centering
 \includegraphics[height=3cm]{linked_list_headers}
-\caption{Memory storage}
+\caption{Linked list headers}
 \end{figure}
 
 When the user asks for memory, the block with the right amount of memory will
 be taken out of the linked list and returned to the user, so for example if
 the user asked for a really large portion of memory then the allocator can
 return a portion of the second segment to the user.  Subsequently the free
-list will be update to look like so
+list will be updated to look like so
 
 \begin{figure}[!htb]
 \centering
@@ -118,9 +118,27 @@ list will be update to look like so
 \caption{After an allocation}
 \end{figure}
 
-And when the same memory is returned to the library via a call to
-\texttt{free()} the free list will now look like as follows (the second and
-third blocks will be coalesced back together)
+When a user program wants to deallocate the same memory (like a call to
+delete) they have to pass the pointer that was allocated via the
+\texttt{malloc()} call to \texttt{free()}.  The free function is supposed to
+backtrack from the pointer the user passed (which will be pointing to the
+beginning of the allocated segment, i.e.  the grey area) back to the header
+and put the header back into the linked list.  This can be done via a simple
+pointer cast to the header type and decrement by one.  Analagously if you
+wanted to get the location of an object of type \texttt{int} right before a
+pointer \texttt{ptr}, you would do
+
+\begin{lstlisting}
+int* pointer_right_before = static_cast<int*>(ptr) - 1;
+\end{lstlisting}
+
+The free function will coalesce memory blocks if they are right by each other
+into one bigger block to save on memory used to store headers.  This can be
+done through a call to \texttt{coalesce()}.  If the two headers can be
+coalesced then the function will coalesce them and return a pointer to the
+coalesced header, the function returns a \texttt{nullptr} to denote failure.
+So if the user deallocates memory after an allocation like in the above
+picture the memory map will look like below
 
 \begin{figure}[!htb]
 \centering
@@ -129,16 +147,7 @@ third blocks will be coalesced back together)
 \end{figure}
 
 \newpage
-\subsection{Deliverables}
-
-\newpage
-\section{Submitting your work}
-Please submit the implementation (\texttt{TransparentList.ipp}) file in a
-tarball to the autograder, you can use the following command to generate the
-tarball.
-\begin{lstlisting}
-    tar -czvf lab08.tar.gz TransparentList.ipp
-\end{lstlisting}
+\subsection{Useful C++ Concepts}
 
 \end{document}
 
