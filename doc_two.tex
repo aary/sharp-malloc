@@ -30,7 +30,7 @@
 % ********************************* HEADERS ***********************************
 \pagenumbering{gobble}
 \begin{document}
-\title{\textbf{EECS 281 Lab 8 - Fragmented Data Structures}}
+\title{\textbf{EECS 281 Lab 8 - Fragmented Data Structures (part 2)}}
 \author{Due Tuesday, March 15th, 2017 at 11:59pm}
 \date{}
 \maketitle
@@ -72,14 +72,13 @@ structures.
 \caption{Non fragemented memory}
 \end{figure}
 
-A memory request is served by returning a block of memory to the user for
-usage.  This memory will be returned as a \texttt{void*} pointer which points
-to allocated memory that is large enough to store the amount of data the user
-has asked for.  The allocator keeps track of the memory segments and how large
-each segment is by storing a header with the size information just before the
-actual usable memory.  This looks like so (with the grey portion showing
-memory that can be used by the user, and the black showing memory reserved for
-the header)
+A memory request is served by returning a block of memory to the user as a
+\texttt{void*} pointer.  This allocated memory that is large enough to store
+the amount of data the user has asked for.  The allocator keeps track of the
+memory segments and how large each segment is by storing a header with the
+size information just before the actual usable memory.  The memory map looks
+like this, with the black rectangles denoting the headers and the grey the
+actual memory blocks.
 
 \begin{figure}[!htb]
 \centering
@@ -94,11 +93,11 @@ knows how much memory each allocated block points to, so that if the
 \texttt{free()} function is called on that memory, it can be put back into the
 linked list of headers.
 
-The linked list of headers will resemble the list shown below, with each
-header pointing to the next header in the logically increasing order or
-addresses (for example here the first header on the left is at a lower
-location in memory as compared to the second and the third and the second one
-is at a lower location in memory as compared to the third)
+The linked list of headers will resemble the list shown in figure 4 below,
+with each header pointing to the next header in the logically increasing order
+or addresses (for example here the first header on the left is at a lower
+location in memory as compared to the second and the third while the second
+one is at a lower location in memory as compared to the third)
 
 \begin{figure}[!htb]
 \centering
@@ -110,7 +109,7 @@ When the user asks for memory, the block with the right amount of memory will
 be taken out of the linked list and returned to the user, so for example if
 the user asked for a really large portion of memory then the allocator can
 return a portion of the second segment to the user.  Subsequently the free
-list will be updated to look like so
+list will be updated to look like so, with the user using the memory in red.
 
 \begin{figure}[!htb]
 \centering
@@ -137,13 +136,17 @@ into one bigger block to save on memory used to store headers.  This can be
 done through a call to \texttt{coalesce()}.  If the two headers can be
 coalesced then the function will coalesce them and return a pointer to the
 coalesced header, the function returns a \texttt{nullptr} to denote failure.
-So if the user deallocates memory after an allocation like in the above
-picture the memory map will look like below
 
 \begin{figure}[!htb]
 \centering
-\includegraphics[height=3cm]{after_deallocation}
-\caption{After a deallocation}
+\includegraphics[height=2.3cm]{before_coalescing}
+\caption{After a deallocation (before coalescing)}
+\end{figure}
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[height=2.3cm]{after_deallocation}
+\caption{After a deallocationi (after coalescing)}
 \end{figure}
 
 \newpage
