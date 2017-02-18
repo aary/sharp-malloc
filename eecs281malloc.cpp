@@ -105,19 +105,6 @@ namespace {
     FreeList_t::NodeIterator insert_sorted(Header_t* to_insert);
 
     /**
-     * Removes memory from the free list as pointed to by the iterator and
-     * then returns the void* pointer required to the user.  This will fail
-     * with an abort() if there isnt enough memory in the node
-     *
-     * @param iter the iterator to the node from which to remove memory
-     * @param amount the amount of memory to remove
-     *
-     * @return returns the memory extracted from the element pointed to by the
-     *         iterator
-     */
-    void* remove_memory_re_insert(FreeList_t::NodeIterator iter, int amount);
-
-    /**
      * Prints the free list, this is a debugging method.  Use this to print
      * the entire contents of the list
      */
@@ -138,20 +125,31 @@ void* malloc(int amount) {
         return header_ptr->datum > amount;
     });
 
-    // if the header was found then remove the required memory, insert in a
-    // sorted manner and then return that memory to the user
-    if (iter != free_list.end()) {
-        return remove_memory_re_insert(iter, amount);
+    // if there is no block big enough to serve the request then ask the
+    // operating system for more memory and then insert that object into the
+    // linked list
+    if (iter == free_list.end()) {
+        auto memory_amount = extend_heap(amount + sizeof(Header_t));
+        auto header = make_header(memory_amount.first, memory_amount.second);
+        assert(header);
+        assert(header->datum >= amount);
+        iter = insert_sorted(header);
     }
 
-    // else allocate more memory, remove memory from that header and then
-    // sorted insert back into the list, and then call malloc again
-    auto memory_amount_pr = extend_heap(amount + sizeof(Header_t));
-    auto header = make_header(memory_amount_pr.first, memory_amount_pr.second);
-    assert(header);
-    assert(header->datum >= amount);
-    iter = insert_sorted(header);
-    return remove_memory_re_insert(iter, amount);
+    // remove the header from the list
+    auto header_to_return = *iter;
+    assert(header_to_return->datum >= amount);
+    free_list.erase(iter);
+
+    // remove the amount of memory that the user had asked for from the
+    // header, if there was more memory left, then reinsert whatever is left
+    // into the linked list of headers
+    auto new_header = remove_memory(header_to_return, amount);
+    assert(new_header);
+    if (new_header != header_to_return) {
+        insert_sorted(new_header);
+    }
+    return static_cast<void*>(header_to_return + 1);
 }
 
 void free(void* address) {
@@ -235,10 +233,6 @@ namespace {
         // the address range being aligned since the node type's alignment has
         // been set to the maximum alignment on the system (i.e.
         // alignof(std::max_align_t)
-        //
-        // the new here is not actually allocating memory but rather is a
-        // placement new, which just constructs the thing on the right in the
-        // memory location specified by address
         auto new_size = static_cast<int>(amount - sizeof(Header_t));
         auto header_ptr = new(address) Header_t{new_size};
         return header_ptr;;
@@ -311,30 +305,6 @@ namespace {
             return header < to_insert;
         });
         return free_list.insert(iter, to_insert);
-    }
-
-    void* remove_memory_re_insert(FreeList_t::NodeIterator iter, int amount) {
-        assert(iter != free_list.end());
-        assert(boundary_aligned(amount));
-        assert(boundary_aligned(*iter));
-        assert((*iter)->datum >= amount);
-
-        // make a copy of the header, remove it from the list and call the
-        // remove_memory function to see what is left after the required
-        // memory is removed
-        auto header = *iter;
-        free_list.erase(iter);
-        auto new_header = remove_memory(header, amount);
-
-        // If the new header was not equal to the old one, then insert the new
-        // one back into the free list since there is enough memory for
-        // another node
-        if (new_header != header) {
-            insert_sorted(new_header);
-        }
-
-        // return the memory right after the header
-        return static_cast<void*>(header + 1);
     }
 
     void print_free_list() {
