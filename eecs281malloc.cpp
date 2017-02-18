@@ -14,7 +14,6 @@
 
 #include <iostream>
 
-using namespace std;
 using std::uintptr_t;
 using std::max_align_t;
 
