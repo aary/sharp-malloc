@@ -136,7 +136,7 @@ beginning of the allocated segment, i.e.  the grey area) back to the header
 and put the header back into the linked list.  This can be done via a simple
 pointer cast to the header type and decrement by one.  Analagously if you
 wanted to get the location of an object of type \texttt{int} right before a
-pointer \texttt{ptr}, you would do
+\texttt{void*} pointer \texttt{ptr}, you would do
 
 \begin{lstlisting}
 int* pointer_right_before = static_cast<int*>(ptr) - 1;
@@ -224,6 +224,8 @@ to \texttt{free()} you have to ensure that all blocks that are coalscable are
 coalesced.
 
 \subsection{Appendix}
+
+\subsubsection{\texttt{static} and anonymous namespaces}
 Free functions that are private to an implementation (\texttt{.cpp}) file file
 are generally either put in an anonymous namespace or declared to be static,
 both achieve the same effect.
@@ -237,8 +239,40 @@ namespace {
 And the C++ standard favors neither as a superior alternative, this lab uses
 the anonymous namespace pattern and as such all "helper" functions are put in
 an anonymous namespace.  Therefore when you define helper functions put their
-declarations and definitions in an anonymous namespace.
+declarations and definitions in an anonymous namespace.  There are several
+examples of how to do this in the \texttt{eecs281malloc.cpp} file.
 
+\subsubsection{Algorithms in the \texttt{<algorithm>} header}
+The \texttt{<algorithm>} header of the C++ standard library includes several
+functions that generalize algorithms on a range when given two iterators.  You
+might find it useful to use a couple of functions from this header.
+
+\subsubsection{Pointer arithmetic and \texttt{void*} pointers}
+If given a typed pointer to a location in memory, subtracting 1 from the
+pointer will give you a pointer that points to the previous object of the same
+type if the elements were stored in an array.  You will likely find pointer
+arithmetic useful when you are given a pointer to a user segment and you want
+to get a pointer to the header right before that pointer.
+
+\texttt{void*} pointers denote untyped addresses in memory.  They can be used
+to track starting addresses, ending addresses and so on.  They just point to
+memory and cannot be used for anything other than casting to and from other
+pointer types and integer types.
+
+If you want to use a \texttt{void*} pointer, you must cast them to pointers of
+another type by using a \texttt{static\_cast<>}.  For example
+\begin{lstlisting}
+Header_t* header = static_cast<Header_t*>(address) - 1;
+\end{lstlisting}
+
+\subsubsection{How typed memory allocators like \texttt{operator new} work}
+Typed memory allocators work surprisingly similarly to the untyped memory
+allocator that you will implement in this lab.  The only difference is that
+typed memory allocators will construct an object in the location in memory
+that is returned to the user prior to their call terminating.  In fact on
+several C++ implemenations \texttt{operator new} just calls \texttt{malloc()}
+and then constructs an object into the memory location returned by
+\texttt{malloc()}
 
 \end{document}
 
