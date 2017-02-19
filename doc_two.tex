@@ -43,18 +43,21 @@
 }
 \thispagestyle{firststyle}
 
+\section{An untyped memory allocator}
+
 In this lab you will be using the transparent linked list from last lab to
 finish writing a memory allocator to allocate memory on the heap!
 
-\section{An untyped memory allocator}
+\subsection{Concepts}
 You will be using the transparent list class you wrote in the previous lab to
 write an untyped memory allocator very much like the C \texttt{malloc()}
 function to allocate memory on the heap.
 
-Memory allocators including the C++ \texttt{new} operator get memory on the
-heap through function calls to the operating system.  Your allocator will
-track the memory available from all previous requests to the operating system
-in a fragmented linked list.
+Allocators including the C++ \texttt{new} operator get memory on the heap
+through function calls to the operating system.  The OS finds new memory
+blocks that can be used by the process and returns a pointer to the start of
+the memory block.  Your allocator will track the memory available from all
+previous requests to the operating system in a fragmented linked list.
 
 A fragmented data structure is one that comprises of elements stored
 discontinuously and possibly of different sizes.  The below two pictures
@@ -63,27 +66,28 @@ structures.
 
 \begin{figure}[!htb]
 \centering
-\includegraphics[height=2cm]{fragmented_memory}
+\includegraphics[height=1.7cm]{fragmented_memory}
 \caption{Fragemented memory}
 \end{figure}
 
 \begin{figure}[!htb]
 \centering
-\includegraphics[height=2cm]{non_fragmented_memory}
+\includegraphics[height=1.7cm]{non_fragmented_memory}
 \caption{Non fragemented memory}
 \end{figure}
 
 A memory request is served by returning a block of memory to the user as a
-\texttt{void*} pointer.  This allocated memory that is large enough to store
-the amount of data the user has asked for.  The allocator keeps track of the
-memory segments and how large each segment is by storing a header with the
-size information just before the actual usable memory.  The memory map looks
-like this, with the black rectangles denoting the headers and the grey the
-actual memory blocks.
+\texttt{void*} pointer.  This allocated memory is large enough to store the
+amount of data the user has asked for.  The allocator keeps track of the
+memory segments fetched from all previous calls to the operating system and
+how large each segment is by storing a header with the size information just
+before the actual usable memory.  The memory map looks like this, with the
+black rectangles denoting the headers and the grey the actual memory blocks
+that can be used by the user.
 
 \begin{figure}[!htb]
 \centering
-\includegraphics[height=2cm]{memory_storage}
+\includegraphics[height=1.7cm]{memory_storage}
 \caption{Memory storage}
 \end{figure}
 
@@ -94,27 +98,33 @@ knows how much memory each allocated block points to, so that if the
 \texttt{free()} function is called on that memory, it can be put back into the
 linked list of headers.
 
+The linked list of headers will be sorted in order of the addresses of the
+headers, so if a header has an address that is smaller than the address of
+another it appears earlier on in the linked list as compared to the other.
 The linked list of headers will resemble the list shown in figure 4 below,
 with each header pointing to the next header in the logically increasing order
-or addresses (for example here the first header on the left is at a lower
-location in memory as compared to the second and the third while the second
-one is at a lower location in memory as compared to the third)
+or addresses (for example here the address of the first header on the left is
+smaller than the address for the middle header which is smaller than the
+address for the last header)
 
 \begin{figure}[!htb]
 \centering
-\includegraphics[height=3cm]{linked_list_headers}
+\includegraphics[height=2.3cm]{linked_list_headers}
 \caption{Linked list headers}
 \end{figure}
 
 When the user asks for memory, the block with the right amount of memory will
 be taken out of the linked list and returned to the user, so for example if
-the user asked for a really large portion of memory then the allocator can
+the user asked for a large portion of memory then the allocator can
 return a portion of the second segment to the user.  Subsequently the free
 list will be updated to look like so, with the user using the memory in red.
+The header right before the red portion of memory will contain the length of
+the memory in the red portion, so that if that memory is freed, the allocator
+knows the amount of memory that can be stored in that segment.
 
 \begin{figure}[!htb]
 \centering
-\includegraphics[height=3cm]{after_allocation}
+\includegraphics[height=2.3cm]{after_allocation}
 \caption{After an allocation}
 \end{figure}
 
@@ -152,18 +162,18 @@ coalesced header, the function returns a \texttt{nullptr} to denote failure.
 
 \newpage
 \subsection{Implementation}
-You will be given two modules, one containing the
-code and declarations for \texttt{malloc()}, one for the interface to interact
-with the operating system and the last one will be your linked list
-implementation.  Each will be a pair of a header file and an implementation
-file.  You will fill in code in the \texttt{eecs281malloc.cpp} file in the
-functions with the \texttt{TODO} symbols.
+You will be given three modules, one containing the code and declarations for
+the allocator, one for the interface to interact with the operating system and
+the last one will be your linked list implemenatation from the previous lab
+You will fill in code in the \texttt{eecs281malloc.cpp} file in the functions
+with the \texttt{TODO} symbols.
 
 \subsubsection{\texttt{malloc()}}
 All pointers returned via an untyped allocator have to be aligned to the
-maximum alignment on the system.  Therefore, the first thing malloc should do
-is to align the \texttt{amount} to the max alignment on the system via a call
-\texttt{round\_up\_to\_max\_alignment()}.
+maximum alignment on the system (the concept of alignment is beyond the scope
+of this course).  Therefore, the first thing \texttt{malloc()} should do is to
+align the \texttt{amount} variable to the max alignment on the system via a
+call \texttt{round\_up\_to\_max\_alignment()}.
 
 Then the \texttt{malloc()} function should find the first block with a memory
 segment that is large enough to serve the user's request.  This is called a
@@ -171,18 +181,20 @@ segment that is large enough to serve the user's request.  This is called a
 enough to serve the user's request, \texttt{malloc()} will call
 \texttt{extend\_heap(int)} with a parameter that is a sum of the aligned
 amount variable and the size of a header.  You can get the sizeof a header by
-calling \texttt{sizeof(Header\_t)}, after calling \texttt{extend\_heap()}, you
-need to construct a header in the location returned by the call to
-\texttt{extend\_heap()} by calling \texttt{make\_header()}.  At this point the
-free list will have a header that is big enough to serve the user's request.
-Insert that header into the linked list after taking out the require memory
-via a call to \texttt{remove\_memory()} and then return the pointer to the
-user.
+calling \texttt{sizeof(Header\_t)}.  This returns a pointer to memory that can
+be longer in length than the memory you had asked for.  After calling
+\texttt{extend\_heap()}, you need to construct a header in the location
+returned by the call to \texttt{extend\_heap()} by calling
+\texttt{make\_header()}.  This header then needs to be inserted into the free
+list while maintaining its sorted invariant.  At this point the free list will
+have a header that is big enough to serve the user's request.  Insert that
+header into the linked list after taking out the required memory via a call to
+\texttt{remove\_memory()} and then return the pointer to the user.
 
 It might be useful to use the \texttt{std::find\_if()} algorithm with a custom
 functor or lambda function that captures the value of the amount that the user
 has asked for.  Another function that might be useful to insert a node into
-the linked list in a sorted manner is \texttt{insert\_sorted()}.  As such it's
+the linked list in a sorted manner is \texttt{insert\_sorted()}.  It's
 implementation has been left empty for you to fill and use.
 
 \subsubsection{\texttt{free()}}
@@ -194,9 +206,11 @@ repeated calls to the operating system.
 The first thing to be done is to fetch a pointer to the header object right
 before the pointer passed to \texttt{free()} by the user.  If the user passes
 a pointer to memory that has not been returned by a previous call to
-\texttt{malloc()} then the behavior is undefined.  To get a pointer to the
-header right before the memory allocated by new one would need to cast the
-address to a pointer type and then subtract one from it
+\texttt{malloc()} then the behavior of the \texttt{free()} function is
+undefined.  To get a pointer to the header right before the memory allocated
+by new one would need to cast the address to a pointer type and then subtract
+one from it
+
 \begin{lstlisting}
 Header_t* header = static_cast<Header_t*>(address) - 1;
 \end{lstlisting}
