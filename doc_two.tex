@@ -1,5 +1,6 @@
 % ********************************* HEADERS ***********************************
 \documentclass{article}
+% setcounter{secnumdepth}{5}
 \usepackage[top=.75in, bottom=.75in, left=.50in,right=.50in]{geometry}
 \usepackage{fancyhdr}
 \usepackage{titling}
@@ -51,9 +52,9 @@ write an untyped memory allocator very much like the C \texttt{malloc()}
 function to allocate memory on the heap.
 
 Memory allocators including the C++ \texttt{new} operator get memory on the
-heap through function calls to the operating system.  Your allocator will be
-keeping track of the memory available from all previous requests to the
-operating system in a fragmented linked list.
+heap through function calls to the operating system.  Your allocator will
+track the memory available from all previous requests to the operating system
+in a fragmented linked list.
 
 A fragmented data structure is one that comprises of elements stored
 discontinuously and possibly of different sizes.  The below two pictures
@@ -146,11 +147,84 @@ coalesced header, the function returns a \texttt{nullptr} to denote failure.
 \begin{figure}[!htb]
 \centering
 \includegraphics[height=2.3cm]{after_deallocation}
-\caption{After a deallocationi (after coalescing)}
+\caption{After a deallocation (after coalescing)}
 \end{figure}
 
 \newpage
-\subsection{Useful C++ Concepts}
+\subsection{Implementation}
+You will be given two modules, one containing the
+code and declarations for \texttt{malloc()}, one for the interface to interact
+with the operating system and the last one will be your linked list
+implementation.  Each will be a pair of a header file and an implementation
+file.  You will fill in code in the \texttt{eecs281malloc.cpp} file in the
+functions with the \texttt{TODO} symbols.
+
+\subsubsection{\texttt{malloc()}}
+All pointers returned via an untyped allocator have to be aligned to the
+maximum alignment on the system.  Therefore, the first thing malloc should do
+is to align the \texttt{amount} to the max alignment on the system via a call
+\texttt{round\_up\_to\_max\_alignment()}.
+
+Then the \texttt{malloc()} function should find the first block with a memory
+segment that is large enough to serve the user's request.  This is called a
+"first fit algorithm".  If there is no block with a memory segment large
+enough to serve the user's request, \texttt{malloc()} will call
+\texttt{extend\_heap(int)} with a parameter that is a sum of the aligned
+amount variable and the size of a header.  You can get the sizeof a header by
+calling \texttt{sizeof(Header\_t)}, after calling \texttt{extend\_heap()}, you
+need to construct a header in the location returned by the call to
+\texttt{extend\_heap()} by calling \texttt{make\_header()}.  At this point the
+free list will have a header that is big enough to serve the user's request.
+Insert that header into the linked list after taking out the require memory
+via a call to \texttt{remove\_memory()} and then return the pointer to the
+user.
+
+It might be useful to use the \texttt{std::find\_if()} algorithm with a custom
+functor or lambda function that captures the value of the amount that the user
+has asked for.  Another function that might be useful to insert a node into
+the linked list in a sorted manner is \texttt{insert\_sorted()}.  As such it's
+implementation has been left empty for you to fill and use.
+
+\subsubsection{\texttt{free()}}
+The user program must call free for every pointer that it has allocated with
+\texttt{malloc()} before terminating the program to avoid memory leaks.  The
+\texttt{free()} function puts the memory back in the free list to avoid
+repeated calls to the operating system.
+
+The first thing to be done is to fetch a pointer to the header object right
+before the pointer passed to \texttt{free()} by the user.  If the user passes
+a pointer to memory that has not been returned by a previous call to
+\texttt{malloc()} then the behavior is undefined.  To get a pointer to the
+header right before the memory allocated by new one would need to cast the
+address to a pointer type and then subtract one from it
+\begin{lstlisting}
+Header_t* header = static_cast<Header_t*>(address) - 1;
+\end{lstlisting}
+
+A function called \texttt{coalesce()} should be provided to you declared and
+defined in an anonymous namespace.  This function coalesces two headers into
+one if they are right after each other in the memory map with nothing in
+between.  If the coalescing is not possible, then this function returns a
+nullptr and does not modify the contents in either header.  After every call
+to \texttt{free()} you have to ensure that all blocks that are coalscable are
+coalesced.
+
+\subsection{Appendix}
+Free functions that are private to an implementation (\texttt{.cpp}) file file
+are generally either put in an anonymous namespace or declared to be static,
+both achieve the same effect.
+\begin{lstlisting}
+static void helper_function() { ... }
+namespace {
+    void helper_function() { ... }
+}
+\end{lstlisting}
+
+And the C++ standard favors neither as a superior alternative, this lab uses
+the anonymous namespace pattern and as such all "helper" functions are put in
+an anonymous namespace.  Therefore when you define helper functions put their
+declarations and definitions in an anonymous namespace.
+
 
 \end{document}
 
