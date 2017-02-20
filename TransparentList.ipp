@@ -264,8 +264,8 @@ TransparentList<Type>::erase(TransparentList<Type>::NodeIterator iterator)
         iterator.node_ptr->prev->next = iterator.node_ptr->next;
     }
 
-    // if this was the only node in the list then erase it and set the head
-    // and tail pointers to null
+    // check if the pointer was at the head, in which case the head pointer
+    // has to be updated
     if (this->head == iterator.node_ptr) {
         this->head = this->head->next;
 
