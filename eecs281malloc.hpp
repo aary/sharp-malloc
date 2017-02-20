@@ -41,7 +41,6 @@
  * library, it probably means that a pointer is either null when it should not
  * be or that it is not aligned to the maximum alignment set by the system
  * hardware
-
  */
 
 #pragma once
