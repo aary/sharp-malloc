@@ -45,19 +45,19 @@
 
 \section{An untyped memory allocator}
 
-In this lab you will be using the transparent linked list from last lab to
-finish writing a memory allocator to allocate memory on the heap!
+Since you now have had sufficient experience allocating memory on the heap via
+\texttt{new}, in this lab you will be using the transparent linked list from
+last lab to finish writing a memory allocator to allocate memory on the heap!
 
 \subsection{Concepts}
-You will be using the transparent list class you wrote in the previous lab to
-write an untyped memory allocator very much like the C \texttt{malloc()}
-function to allocate memory on the heap.
+The memory allocator you will write will have an interface very similar to the
+C standard library function \texttt{malloc()} to allocate memory on the heap.
 
 Allocators including the C++ \texttt{new} operator get memory on the heap
 through function calls to the operating system.  The OS finds new memory
 blocks that can be used by the process and returns a pointer to the start of
-the memory block.  Your allocator will track the memory available from all
-previous requests to the operating system in a fragmented linked list.
+the usable memory block.  Your allocator will track the memory available from
+all previous requests to the operating system in a fragmented linked list.
 
 A fragmented data structure is one that comprises of elements stored
 discontinuously and possibly of different sizes.  The below two pictures
@@ -222,6 +222,54 @@ between.  If the coalescing is not possible, then this function returns a
 nullptr and does not modify the contents in either header.  After every call
 to \texttt{free()} you have to ensure that all blocks that are coalscable are
 coalesced.
+
+\subsection{Implementation API}
+While writing a solution to this lab you will be using a lot of functions that
+are already written for you.  Here is a description of some of those
+functions, mirrored in the comments right above their public declarations.
+
+\subsubsection{\texttt{extend\_heap(int)}}
+The \texttt{extend\_heap(int)} function requests memory from the OS that is at
+least as big as the amount passed to the function.  It then returns this
+uninitialized portion of memory back to the user as a pair
+(\texttt{std::pair<void*, int>}) containing the pointer to the memory and an
+integer with the actual size of the memory block.  Keep in mind that the
+amount of memory allocated might be larger than the amount that you had
+requested, your allocator code should take this into consideration!
+
+\subsubsection{\texttt{round\_up\_to\_max\_alignment(int)}}
+This function accepts an integer and rounds it up to the maximum alignment on
+the system, why this is needed is beyond the scope of the course.  This
+function should be called on the amount variable passed to \texttt{malloc()}
+before anything else.
+
+\subsubsection{\texttt{make\_header(void*, int)}}
+The \texttt{make\_header()} function accepts a \texttt{void*} pointer that
+points to allocated memory (allocated from previous calls to the OS) and an
+integer that contains the length of the allocated memory.
+\texttt{make\_header()} then constructs a header object in the memory location
+specified and returns a \texttt{Header\_t*} pointer to the header.  If there
+is an error and the header cannot be constructed in the amount of memory
+given, the function returns a \texttt{nullptr}
+
+\subsubsection{\texttt{remove\_memory(Header\_t*, int)}}
+\texttt{remove\_memory()} accepts a header pointer and an integer that denotes
+the amount of memory that is to be removed from the memory segment following
+the header and returns a pointer to a header for whatever memory was left
+after removing the given amount of memory.  If there was just enough memory
+following the header to serve the request, then \texttt{remove\_memory()}
+returns the same header pointer that was passed to the function.  If there is
+more than sufficient memory then the function returns a header pointer that is
+different from the passed pointer.  In which case, your allocator is supposed
+to insert that header back into the sorted linked list.
+
+\subsubsection{\texttt{coalesce(Header\_t*, Header\_t*)}}
+This function accepts two header pointers and coalesces them into one header
+if they are adjacent (after taking into consideration the memory segments
+right after the headers).  If the two headers cannot be coalesced into one
+then this function returns a nullptr to denote failure.  The contents of the
+headers are left unchanged in the event of a failure.
+
 
 \subsection{Appendix}
 
